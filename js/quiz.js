@@ -182,7 +182,7 @@ const TYPES = {
       const ok = isCorrect(v, q.a) || q.a.some(a => norm(full.replace("___", a)) === norm(v));
       inp.classList.add(ok ? "right" : "wrong");
       const sentence = full.replace("___", q.a[0]);
-      api.done(ok, v, rightText(q), /[a-z]/i.test(sentence) && !/[=+−]/.test(sentence) ? sentence : "");
+      api.done(ok, v, rightText(q), /[a-z]/i.test(sentence) && !/[=+−→]/.test(sentence) ? sentence : "");
     });
   },
   tr(q, body, api) {

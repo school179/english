@@ -7,6 +7,10 @@ function shuffle(arr) {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
+}
 function parseWord(str, lesson) { const [en, ipa, ru] = str.split("|"); return { en, ipa, ru, lesson }; }
 const lessonById = id => LESSONS.find(l => l.id === Number(id));
 
@@ -33,7 +37,7 @@ const isCorrect = (input, answers) => answers.some(a => norm(a) === norm(input))
 
 /* ===== Хранилище ===== */
 const STORE_KEY = "englishStartA1";
-const DEFAULT_STATE = { lessons: {}, cards: {}, xp: 0, streak: { last: null, count: 0 }, days: {}, settings: { voice: "", rate: 0.9 }, test: null, theme: null };
+const DEFAULT_STATE = { lessons: {}, cards: {}, xp: 0, streak: { last: null, count: 0 }, days: {}, settings: { voice: "", rate: 0.9 }, tests: {}, theme: null };
 let S = (() => {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_KEY));
@@ -41,6 +45,10 @@ let S = (() => {
   } catch (e) { /* пустое хранилище */ }
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
 })();
+// перенос результата теста из версии только с A1
+if (!S.tests) S.tests = {};
+if (S.test && !S.tests.A1) S.tests.A1 = S.test;
+delete S.test;
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* приватный режим */ } }
 
 function dateKey(d = new Date()) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
@@ -145,6 +153,14 @@ $("#themeBtn").addEventListener("click", toggleTheme);
 const lessonState = id => S.lessons[id] || {};
 const lessonsDone = () => LESSONS.filter(l => lessonState(l.id).done).length;
 const nextLesson = () => LESSONS.find(l => !lessonState(l.id).done) || null;
+
+/* ===== Уровни ===== */
+const LEVELS = ["A1", "A2"];
+const LEVEL_NAMES = { A1: "A0 → A1", A2: "A1 → A2" };
+const levelOf = L => (MODULES.find(m => m.id === L.module) || {}).level || "A1";
+const lessonsOfLevel = lvl => LESSONS.filter(l => levelOf(l) === lvl);
+const levelDone = lvl => lessonsOfLevel(lvl).filter(l => lessonState(l.id).done).length;
+const TESTS = { A1: window.FINAL_TEST, A2: window.FINAL_TEST_A2 };
 
 /* ===== Роутер ===== */
 const ROUTES = {};

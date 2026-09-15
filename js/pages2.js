@@ -102,7 +102,8 @@ ROUTES.trainers = (app, which) => {
     ["time", "⏰", "Время на слух", "Услышьте время и выберите правильный вариант на часах."],
     ["dictation", "📝", "Диктант фраз", "Послушайте фразу из диалогов и разговорника и запишите её."],
     ["speak", "🎤", "Произношение", "Прочитайте фразу вслух — браузер распознает речь и оценит."],
-    ["irregular", "⚡", "Неправильные глаголы", "Вспомните форму прошедшего времени."],
+    ["irregular", "⚡", "Неправильные глаголы", "Три формы: go — went — gone. Вспомните 2-ю или 3-ю форму."],
+    ["verbs", "📋", "Таблица глаголов", "60 самых частых неправильных глаголов с озвучкой."],
     ["mix", "🎲", "Микс по пройденному", "Случайные задания из пройденных уроков."]
   ];
   const run = (qs, label) => runQuiz(app, qs, {
@@ -136,12 +137,22 @@ ROUTES.trainers = (app, which) => {
     return run(shuffle(pool).slice(0, 8).map(a => ({ t: "l", a: a.replace(/[.!?]+$/, "") })), "dictation");
   }
   if (which === "irregular") {
-    const L = lessonById(26);
-    const qs = shuffle(L.vocab.map(v => parseWord(v))).slice(0, 12).map(w => {
-      const [base, past] = w.en.split(" — ");
-      return { t: "i", q: `${base} → ___`, a: [past], ru: w.ru };
+    const qs = shuffle(IRREGULAR).slice(0, 12).map(s => {
+      const [base, past, part, ru] = s.split("|");
+      return Math.random() < 0.5
+        ? { t: "i", q: `${base} → ___ → ${part}`, a: past.split("/"), ru: `${ru} — 2-я форма (Past Simple)` }
+        : { t: "i", q: `${base} → ${past} → ___`, a: [part], ru: `${ru} — 3-я форма (Past Participle)` };
     });
     return run(qs, "irregular");
+  }
+  if (which === "verbs") {
+    app.innerHTML = `<div class="crumbs"><a href="#/trainers">Тренажёры</a> › Таблица глаголов</div>
+      <h1>📋 Неправильные глаголы</h1>
+      <p class="muted"><b>V1</b> — начальная форма, <b>V2</b> — Past Simple (I went), <b>V3</b> — Past Participle для Present Perfect и пассива (I have gone, it was made).</p>
+      <div class="card" style="padding:8px 16px"><div class="table-wrap"><table class="data-table"><thead><tr><th></th><th>V1</th><th>V2</th><th>V3</th><th>Перевод</th></tr></thead>
+      <tbody>${IRREGULAR.map(s => { const [a, b, c, r] = s.split("|"); return `<tr><td>${sayBtn(`${a}, ${b.replace("/", ", ")}, ${c}`)}</td><td><b>${a}</b></td><td>${b}</td><td>${c}</td><td>${esc(r)}</td></tr>`; }).join("")}</tbody></table></div></div>
+      <div class="row section" style="justify-content:center"><a class="btn" href="#/trainers/irregular">Потренироваться →</a></div>`;
+    return;
   }
   if (which === "mix") {
     const opened = LESSONS.filter(l => S.lessons[l.id]);
@@ -211,7 +222,7 @@ ROUTES.phrases = app => {
     $("#phList").innerHTML = PHRASEBOOK.map(c => {
       const items = c.items.map(i => i.split("|")).filter(([en, ru]) => !q || en.toLowerCase().includes(q) || ru.toLowerCase().includes(q));
       if (!items.length) return "";
-      return `<div class="card"><h3>${c.icon} ${esc(c.cat)}</h3>${items.map(([en, ru]) => `
+      return `<div class="card"><h3>${c.icon} ${esc(c.cat)}${c.level ? ` <span class="badge primary">${c.level}</span>` : ""}</h3>${items.map(([en, ru]) => `
         <div class="phrase">${sayBtn(en.replace(/\.\.\./g, ""))}<div><div class="en">${esc(en)}</div><div class="ru">${esc(ru)}</div></div></div>`).join("")}</div>`;
     }).join("") || `<div class="empty">Ничего не найдено</div>`;
   };
@@ -239,33 +250,47 @@ ROUTES.dictionary = app => {
 };
 
 /* ===== Итоговый тест ===== */
-ROUTES.test = app => {
-  const best = S.test;
-  app.innerHTML = `<div class="quiz"><div class="q-card" style="text-align:center">
-    <div style="font-size:3.5rem">🎓</div><h1>Итоговый тест A1</h1>
-    <p class="muted">${FINAL_TEST.length} вопросов: грамматика, лексика, аудирование (нужен звук 🔊) и чтение. Займёт около 20 минут. Результат от <b>75%</b> означает, что уровень A1 достигнут.</p>
+function testHub(app) {
+  app.innerHTML = `<h1>🎓 Итоговые тесты</h1>
+    <p class="muted">В каждом тесте 40 вопросов: грамматика, лексика, аудирование и чтение. Результат от 75% означает, что уровень достигнут.</p>
+    <div class="grid grid-2">${LEVELS.map(l => { const b = S.tests[l], t = lessonsOfLevel(l).length; return `
+      <a class="card lesson-tile" style="display:block" href="#/test/${l}">
+        <div style="font-size:2.4rem">${l === "A1" ? "🥉" : "🥈"}</div>
+        <h2 style="margin-top:8px">Тест ${l}</h2>
+        <p class="muted">${l === "A1" ? "Основы: to be, Present Simple и Continuous, Past Simple, can, going to, базовая лексика." : "Present Perfect, Past Continuous, used to, условные предложения, модальные глаголы, пассив."}</p>
+        <div class="row"><span class="badge">Уроки: ${levelDone(l)}/${t}</span>${b ? `<span class="badge ${b.pct >= 75 ? "good" : "warn"}">Лучший результат: ${b.pct}%</span>` : `<span class="badge">не пройден</span>`}</div>
+      </a>`; }).join("")}</div>`;
+}
+
+ROUTES.test = (app, lvlParam) => {
+  if (!LEVELS.includes(lvlParam)) return testHub(app);
+  const lvl = lvlParam, TEST = TESTS[lvl], best = S.tests[lvl];
+  const done = levelDone(lvl), total = lessonsOfLevel(lvl).length;
+  app.innerHTML = `<div class="quiz"><div class="crumbs"><a href="#/test">Тесты</a> › ${lvl}</div><div class="q-card" style="text-align:center">
+    <div style="font-size:3.5rem">🎓</div><h1>Итоговый тест ${lvl}</h1>
+    <p class="muted">${TEST.length} вопросов: грамматика, лексика, аудирование (нужен звук 🔊) и чтение. Займёт около 20 минут. Результат от <b>75%</b> означает, что уровень ${lvl} достигнут.</p>
     ${best ? `<p>Ваш лучший результат: <span class="badge ${best.pct >= 75 ? "good" : "warn"}">${best.pct}%</span></p>` : ""}
-    ${lessonsDone() < LESSONS.length ? `<div class="note" style="text-align:left">Вы прошли ${lessonsDone()} из ${LESSONS.length} уроков. Тест можно пройти и сейчас — он покажет, над чем поработать.</div>` : ""}
+    ${done < total ? `<div class="note" style="text-align:left">Вы прошли ${done} из ${total} уроков этой части. Тест можно пройти и сейчас — он покажет, над чем поработать.</div>` : ""}
     <button class="btn lg" id="testGo">Начать тест</button></div></div>`;
   $("#testGo").onclick = () => {
-    const readingText = FINAL_TEST.find(q => q.cat === "reading" && !q.sameText).text;
-    const qs = FINAL_TEST.map(q => q.sameText ? { ...q, text: readingText } : q);
+    const readingText = TEST.find(q => q.cat === "reading" && !q.sameText).text;
+    const qs = TEST.map(q => q.sameText ? { ...q, text: readingText } : q);
     const order = [...qs.filter(q => q.cat === "grammar" || q.cat === "vocab"), ...qs.filter(q => q.cat === "listening"), ...qs.filter(q => q.cat === "reading")];
     runQuiz(app, order, {
-      onExit: () => ROUTES.test(app),
+      onExit: () => ROUTES.test(app, lvl),
       onFinish: r => {
         const byCat = {};
         order.forEach(q => { byCat[q.cat] = byCat[q.cat] || { t: 0, ok: 0 }; byCat[q.cat].t++; });
         const wrongPrompts = new Set(r.mistakes.map(m => m.prompt));
         order.forEach(q => { if (!wrongPrompts.has(promptText(q))) byCat[q.cat].ok++; });
-        if (!S.test || r.pct > S.test.pct) S.test = { pct: r.pct, at: Date.now() };
+        if (!S.tests[lvl] || r.pct > S.tests[lvl].pct) S.tests[lvl] = { pct: r.pct, at: Date.now() };
         addXP(r.correct * 5); save();
-        return `<p style="font-size:1.15rem">${r.pct >= 75 ? "🎉 <b>Поздравляем! Ваш уровень — A1.</b> Можно переходить к программе A2." : "Уровень A1 пока не достигнут. Повторите слабые темы и попробуйте снова."}</p>
+        return `<p style="font-size:1.15rem">${r.pct >= 75 ? `🎉 <b>Поздравляем! Ваш уровень — ${lvl}.</b> ${lvl === "A1" ? 'Можно переходить ко <a href="#/lessons/A2">второй части: A1 → A2</a>.' : "Вы готовы начинать программу B1!"}` : `Уровень ${lvl} пока не достигнут. Повторите слабые темы и попробуйте снова.`}</p>
           <div class="grid grid-2" style="text-align:left;margin-top:12px">${Object.entries(byCat).map(([c, v]) => { const p = Math.round(v.ok / v.t * 100); return `
             <div class="card flat"><div class="row"><b>${TEST_CATS[c]}</b><div class="spacer"></div><span>${v.ok}/${v.t}</span></div>
             <div class="bar" style="margin-top:8px"><span style="width:${p}%;background:${p >= 75 ? "var(--good)" : p >= 50 ? "var(--warn)" : "var(--bad)"}"></span></div></div>`; }).join("")}</div>`;
       },
-      actions: [{ label: "Пройти заново", cls: "secondary", onClick: () => ROUTES.test(app) }, { label: "К урокам", onClick: () => { location.hash = "#/lessons"; } }]
+      actions: [{ label: "Пройти заново", cls: "secondary", onClick: () => ROUTES.test(app, lvl) }, { label: "К урокам", onClick: () => { location.hash = "#/lessons"; } }]
     });
   };
 };
@@ -280,7 +305,7 @@ ROUTES.progress = app => {
       <div class="card stat"><b>${lessonsDone()}/${LESSONS.length}</b><span>уроков пройдено</span></div>
       <div class="card stat"><b>${learnedCount()}</b><span>слов выучено</span></div>
       <div class="card stat"><b>🔥 ${currentStreak()}</b><span>дней подряд</span></div>
-      <div class="card stat"><b>${S.test ? S.test.pct + "%" : "—"}</b><span>тест A1</span></div>
+      <div class="card stat"><b>${LEVELS.map(l => S.tests[l] ? S.tests[l].pct + "%" : "—").join(" / ")}</b><span>тесты A1 / A2</span></div>
     </div>
     <div class="card section">
       <h2>Активность за 4 недели</h2>
@@ -291,7 +316,7 @@ ROUTES.progress = app => {
     </div>
     <div class="card section">
       <h2>Уроки</h2>
-      ${MODULES.map(M => `<h3 style="margin-top:14px">Модуль ${M.id}. ${esc(M.title)}</h3>
+      ${MODULES.map(M => `<h3 style="margin-top:14px"><span class="badge primary">${M.level || "A1"}</span> Модуль ${M.id}. ${esc(M.title)}</h3>
         ${LESSONS.filter(l => l.module === M.id).map(l => { const s = lessonState(l.id); return `
         <div class="row" style="padding:6px 0;border-bottom:1px solid var(--border)"><span>${l.icon}</span><a href="#/lesson/${l.id}" style="flex:1;color:var(--text)">${l.id}. ${esc(l.title)}</a>
         <div class="bar" style="width:120px"><span style="width:${s.best || 0}%;background:${s.done ? "var(--good)" : "var(--warn)"}"></span></div><span class="small" style="width:44px;text-align:right">${s.best != null ? s.best + "%" : "—"}</span></div>`; }).join("")}`).join("")}

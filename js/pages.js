@@ -1,24 +1,26 @@
 /* ===== Главная ===== */
 ROUTES[""] = app => {
-  const done = lessonsDone(), total = LESSONS.length, pct = Math.round((done / total) * 100);
+  const done = lessonsDone();
   const next = nextLesson();
   const due = srsDue().length;
-  const level = pct >= 100 ? "A1" : pct >= 50 ? "A0 → A1" : "A0";
+  const lv = LEVELS.map(l => { const total = lessonsOfLevel(l).length, d = levelDone(l); return { l, total, d, pct: Math.round((d / total) * 100) }; });
+  const passed = l => S.tests[l] && S.tests[l].pct >= 75;
+  const level = lv[1].pct >= 100 || passed("A2") ? "A2" : lv[0].pct >= 100 || passed("A1") ? "A1 → A2" : lv[0].pct >= 50 ? "A0 → A1" : "A0";
   app.innerHTML = `
     <section class="hero">
       <div>
-        <h1>Английский с нуля до A1</h1>
-        <p>28 уроков, 550+ слов с озвучкой и транскрипцией, грамматика простым языком, диалоги, тренажёры и итоговый тест. Занимайтесь 20–30 минут в день — и через 2–3 месяца вы сможете представиться, рассказать о себе, сделать заказ в кафе и спросить дорогу.</p>
+        <h1>Английский с нуля до A2</h1>
+        <p>52 урока в двух частях: <b>A0 → A1</b> — основы, и <b>A1 → A2</b> — уверенный базовый уровень. ${ALL_WORDS.length} слов и выражений с озвучкой и транскрипцией, грамматика простым языком, диалоги, тренажёры и итоговые тесты. Занимайтесь 20–30 минут в день.</p>
         <div class="row" style="margin-top:18px">
-          ${next ? `<a class="btn lg primary-inv" href="#/lesson/${next.id}">${done ? "Продолжить" : "Начать"}: урок ${next.id} →</a>` : `<a class="btn lg primary-inv" href="#/test">Пройти итоговый тест →</a>`}
+          ${next ? `<a class="btn lg primary-inv" href="#/lesson/${next.id}">${done ? "Продолжить" : "Начать"}: урок ${next.id} →</a>` : `<a class="btn lg primary-inv" href="#/test/A2">Итоговый тест A2 →</a>`}
           <a class="btn lg secondary" href="#/alphabet">Алфавит и звуки</a>
         </div>
       </div>
       <div class="hero-level">
-        <div class="level-track"><span>A0</span><span>Ваш уровень: ${level}</span><span>A1</span></div>
-        <div class="bar"><span style="width:${pct}%"></span></div>
-        <p class="small" style="margin-top:10px">Пройдено уроков: <b>${done} из ${total}</b></p>
-        ${next ? `<p class="small" style="margin:0">Следующий: ${next.icon} <b>${esc(next.title)}</b></p>` : ""}
+        <div class="level-track"><span>Ваш уровень: ${level}</span></div>
+        ${lv.map(x => `<div class="row small" style="justify-content:space-between;margin-top:12px"><b>Часть ${x.l === "A1" ? 1 : 2}: ${LEVEL_NAMES[x.l]}</b><span>${x.d} / ${x.total}${passed(x.l) ? " · тест ✓" : ""}</span></div>
+          <div class="bar" style="margin-top:4px"><span style="width:${x.pct}%"></span></div>`).join("")}
+        ${next ? `<p class="small" style="margin:14px 0 0">Следующий: ${next.icon} <b>${esc(next.title)}</b></p>` : ""}
       </div>
     </section>
 
@@ -37,11 +39,11 @@ ROUTES[""] = app => {
       <h2>Как устроен курс</h2>
       <div class="grid grid-3">
         <div class="card"><h3>1. Звуки и буквы</h3><p class="muted">Алфавит, трудные звуки (th, w, короткие и долгие гласные) и правила чтения.</p><a href="#/alphabet">Открыть →</a></div>
-        <div class="card"><h3>2. 28 уроков</h3><p class="muted">В каждом: слова с озвучкой, грамматика на русском, диалог и 15–20 упражнений.</p><a href="#/lessons">К урокам →</a></div>
+        <div class="card"><h3>2. 52 урока</h3><p class="muted">28 уроков до A1 и 24 урока до A2. В каждом: слова с озвучкой, грамматика на русском, диалог и 15–20 упражнений.</p><a href="#/lessons">К урокам →</a></div>
         <div class="card"><h3>3. Повторение</h3><p class="muted">Карточки с интервальным повторением: слова возвращаются, когда вы начинаете их забывать.</p><a href="#/cards">Карточки →</a></div>
         <div class="card"><h3>4. Тренажёры</h3><p class="muted">Числа на слух, диктант, спеллинг и произношение с распознаванием речи.</p><a href="#/trainers">Тренажёры →</a></div>
         <div class="card"><h3>5. Разговорник</h3><p class="muted">Готовые фразы для кафе, магазина, города, отеля и экстренных ситуаций.</p><a href="#/phrases">Разговорник →</a></div>
-        <div class="card"><h3>6. Тест A1</h3><p class="muted">40 вопросов: грамматика, лексика, аудирование и чтение. Покажет, достигнут ли уровень.</p><a href="#/test">К тесту →</a></div>
+        <div class="card"><h3>6. Тесты A1 и A2</h3><p class="muted">По 40 вопросов: грамматика, лексика, аудирование и чтение. Покажут, достигнут ли уровень.</p><a href="#/test">К тесту →</a></div>
       </div>
     </section>
 
@@ -67,6 +69,15 @@ ROUTES[""] = app => {
           <li>Коротко рассказать о прошлом и планах</li>
           <li>Читать короткие простые тексты и заполнять анкеты</li>
         </ul>
+        <h2 style="margin-top:20px">А на A2</h2>
+        <ul style="padding-left:20px;margin:0">
+          <li>Рассказывать истории и о своём опыте (Present Perfect, Past Continuous)</li>
+          <li>Сравнивать, давать советы, говорить о правилах и обязанностях</li>
+          <li>Обсуждать планы, прогнозы и условия: «если..., то...»</li>
+          <li>Справляться в поездке: аэропорт, отель, врач, проблемы</li>
+          <li>Говорить по телефону и писать короткие письма</li>
+          <li>Понимать главное в разговорах и текстах на знакомые темы</li>
+        </ul>
       </div>
     </section>`;
 };
@@ -74,21 +85,32 @@ ROUTES[""] = app => {
 /* ===== Список уроков ===== */
 function lessonTile(L) {
   const st = lessonState(L.id);
-  const badge = st.done ? `<span class="badge good">✓ ${st.best}%</span>` : st.best != null ? `<span class="badge warn">${st.best}%</span>` : `<span class="badge">${L.vocab.length} слов</span>`;
+  const badge = st.done ? `<span class="badge good">✓ ${st.best}%</span>` : st.best != null ? `<span class="badge warn">${st.best}%</span>` : `<span class="badge">${L.vocab.length} ${plural(L.vocab.length, "слово", "слова", "слов")}</span>`;
   return `<a class="lesson-tile ${st.done ? "done" : ""}" href="#/lesson/${L.id}">
     <div class="lesson-icon">${st.done ? "✅" : L.icon}</div>
     <div style="flex:1;min-width:0"><div class="s">Урок ${L.id} · ${esc(L.en)}</div><div class="t">${esc(L.title)}</div></div>${badge}</a>`;
 }
-ROUTES.lessons = app => {
+ROUTES.lessons = (app, lvlParam) => {
+  const nl = nextLesson();
+  const lvl = LEVELS.includes(lvlParam) ? lvlParam : nl ? levelOf(nl) : "A2";
+  const info = {
+    A1: "Часть 1: от нуля до A1 — первые фразы, базовая грамматика, повседневные темы.",
+    A2: "Часть 2: от A1 до A2 — Present Perfect, Past Continuous, условные предложения, модальные глаголы, пассив, письма."
+  };
+  const a1Ready = levelDone("A1") === lessonsOfLevel("A1").length || (S.tests.A1 && S.tests.A1.pct >= 75);
   app.innerHTML = `<h1>Уроки</h1>
-    <p class="muted">Проходите по порядку: каждый урок опирается на предыдущие. Урок считается пройденным, если в практике набрано 70% и больше.</p>
-    <a class="lesson-tile" href="#/alphabet" style="max-width:520px"><div class="lesson-icon">🔤</div><div style="flex:1"><div class="s">Урок 0 · Alphabet</div><div class="t">Алфавит, звуки и правила чтения</div></div><span class="badge primary">начните здесь</span></a>
-    ${MODULES.map(M => {
+    <div class="tabs">${LEVELS.map(l => { const d = levelDone(l), t = lessonsOfLevel(l).length; return `<button data-l="${l}" class="${l === lvl ? "active" : ""}">${LEVEL_NAMES[l]} <span class="badge ${d === t ? "good" : ""}">${d}/${t}</span></button>`; }).join("")}</div>
+    <p class="muted">${info[lvl]} Проходите по порядку: урок считается пройденным, если в практике набрано 70% и больше.</p>
+    ${lvl === "A1" ? `<a class="lesson-tile" href="#/alphabet" style="max-width:520px"><div class="lesson-icon">🔤</div><div style="flex:1"><div class="s">Урок 0 · Alphabet</div><div class="t">Алфавит, звуки и правила чтения</div></div><span class="badge primary">начните здесь</span></a>` :
+      a1Ready ? "" : `<div class="note">Эта часть рассчитана на тех, кто уже знает материал A1. Если вы начинаете не с нуля — пройдите <a href="#/test/A1">тест A1</a>: результат от 75% покажет, что можно смело идти дальше.</div>`}
+    ${MODULES.filter(M => (M.level || "A1") === lvl).map(M => {
       const ls = LESSONS.filter(l => l.module === M.id);
       const d = ls.filter(l => lessonState(l.id).done).length;
       return `<section class="module"><div class="module-head"><h2>Модуль ${M.id}. ${esc(M.title)}</h2><span class="muted">${esc(M.desc)}</span><span class="badge ${d === ls.length ? "good" : ""}">${d}/${ls.length}</span></div>
         <div class="grid grid-2">${ls.map(lessonTile).join("")}</div></section>`;
-    }).join("")}`;
+    }).join("")}
+    <div class="card section row"><div style="font-size:2rem">🎓</div><div><b>Итоговый тест ${lvl}</b><div class="muted small">40 вопросов по всей части. ${S.tests[lvl] ? `Лучший результат: ${S.tests[lvl].pct}%` : "Ещё не пройден."}</div></div><div class="spacer"></div><a class="btn" href="#/test/${lvl}">Пройти тест</a></div>`;
+  $$(".tabs button", app).forEach(b => b.onclick = () => { location.hash = `#/lessons/${b.dataset.l}`; });
 };
 
 /* ===== Страница урока ===== */
@@ -99,11 +121,12 @@ ROUTES.lesson = (app, id, tab) => {
   const st = lessonState(L.id);
   const words = L.vocab.map(v => parseWord(v, L.id));
   const prev = lessonById(L.id - 1), next = lessonById(L.id + 1);
+  const lvl = levelOf(L), lastOfLevel = !next || levelOf(next) !== lvl;
   const tabs = [["words", "📖 Слова"], ["grammar", "🧠 Грамматика"], ["dialog", "💬 Диалог"], ["practice", "✍️ Практика"]];
   let current = tabs.some(t => t[0] === tab) ? tab : "words";
 
   app.innerHTML = `
-    <div class="crumbs"><a href="#/lessons">Уроки</a> › Модуль ${M.id}. ${esc(M.title)}</div>
+    <div class="crumbs"><a href="#/lessons/${lvl}">Уроки ${LEVEL_NAMES[lvl]}</a> › Модуль ${M.id}. ${esc(M.title)}</div>
     <div class="lesson-header">
       <div class="lesson-icon">${L.icon}</div>
       <div><div class="muted small">Урок ${L.id} из ${LESSONS.length} · ${esc(L.en)}</div><h1 style="margin:0">${esc(L.title)}</h1>
@@ -114,7 +137,7 @@ ROUTES.lesson = (app, id, tab) => {
     <div id="tabBody"></div>
     <div class="row section" style="justify-content:space-between">
       ${prev ? `<a class="btn secondary" href="#/lesson/${prev.id}">← Урок ${prev.id}</a>` : `<a class="btn secondary" href="#/alphabet">← Алфавит</a>`}
-      ${next ? `<a class="btn secondary" href="#/lesson/${next.id}">Урок ${next.id} →</a>` : `<a class="btn secondary" href="#/test">Итоговый тест →</a>`}
+      <span class="row">${lastOfLevel ? `<a class="btn" href="#/test/${lvl}">Итоговый тест ${lvl} →</a>` : ""}${next ? `<a class="btn secondary" href="#/lesson/${next.id}">Урок ${next.id} →</a>` : ""}</span>
     </div>`;
 
   const body = $("#tabBody");
@@ -211,7 +234,7 @@ ROUTES.lesson = (app, id, tab) => {
       },
       actions: [
         { label: "Пройти ещё раз", cls: "secondary", onClick: () => startPractice() },
-        ...(next ? [{ label: `Урок ${next.id} →`, onClick: () => { location.hash = `#/lesson/${next.id}`; } }] : [{ label: "Итоговый тест →", onClick: () => { location.hash = "#/test"; } }])
+        ...(lastOfLevel ? [{ label: `Итоговый тест ${lvl} →`, onClick: () => { location.hash = `#/test/${lvl}`; } }] : [{ label: `Урок ${next.id} →`, onClick: () => { location.hash = `#/lesson/${next.id}`; } }])
       ]
     });
   };

@@ -87,9 +87,10 @@ p { margin: 0 0 .8em; }
 /* ---------- layout ---------- */
 main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px; }
 .grid { display: grid; gap: 16px; }
-.grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.grid-4 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
+.grid-4 { grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); }
+.grid > * { min-width: 0; }
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 20px; box-shadow: var(--shadow);
@@ -294,7 +295,7 @@ mark { background: var(--accent-soft); color: var(--accent); padding: 0 3px; bor
 .phrase .en { font-weight: 800; }
 .phrase .ru { color: var(--muted); font-size: .93rem; }
 .search { max-width: 420px; }
-select.text-input { font-size: 1rem; padding: 9px 12px; width: auto; }
+select.text-input { font-size: 1rem; padding: 9px 12px; width: auto; max-width: 100%; text-overflow: ellipsis; }
 
 /* ---------- misc ---------- */
 .toast {
